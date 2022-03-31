@@ -38,8 +38,8 @@ jobs:
           npm_package_path="https://www.npmjs.com/package/"
           npm_link="$npm_package_path$npm_package"
           echo "::set-output name=npm-link::$npm_link"
-  validate-author:
-    name: Check that the submitter of the removal request is the same as the submitter of the submission request
+  validate-requestor:
+    name: Validate matching add-template issue
     runs-on: ubuntu-latest
     outputs:
       error: ${{ steps.check-request-creator.outputs.error }}
@@ -52,24 +52,12 @@ jobs:
       - name: Validate creator of removal request
         id: check-request-creator
         run: node src/validate-removal-author.js "${{ github.event.issue.user.login }}" "${{ needs.parse-issue-form-body.outputs.npm-link }}"
-  check-registry-exists:
-    name: Check registry.json exists in repository
-    runs-on: ubuntu-latest
-    outputs:
-      error: ${{ steps.check-registry.outputs.error }}
-    steps:
-      - name: checkout repo
-        uses: actions/checkout@v2
-      - name: check registry.json exists
-        id: check-registry
-        run: |
-          if ! [ -f $REGISTRY_FILE ]; then echo "::set-output name=error:::x: registry.json doesn't exist in repository."; exit 1; fi;
   remove-from-registry:
     name: Remove template from registry
     runs-on: ubuntu-latest
     outputs:
       error: ${{ steps.run-remove-from-registry.outputs.error }}
-    needs: [parse-issue-form-body, validate-author, check-registry-exists]
+    needs: [parse-issue-form-body, validate-requestor]
     if: ${{ always() && contains(join(needs.*.result, ','), 'success') && }}
     steps:
       - name: Checkout repository
@@ -99,16 +87,15 @@ jobs:
   fail-removal-comment:
     name: Removal failed
     runs-on: ubuntu-latest
-    needs: [check-registry-exists, validate-author, remove-from-registry]
-    if: ${{ always() && (needs.check-registry-exists.outputs.error != '' || needs.remove-from-registry.outputs.error != '' || needs.validate-author.outputs.error != '' }}
+    needs: [validate-requestor, remove-from-registry]
+    if: ${{ always() && (needs.remove-from-registry.outputs.error != '' || needs.validate-requestor.outputs.error != '' }}
     steps:
       - uses: ben-z/actions-comment-on-issue@1.0.2
         with:
           message: |
             The following checks failed:
             
-            ${{ needs.validate-author.outputs.error }}
-            ${{ needs.check-registry-exists.outputs.error }}
+            ${{ needs.validate-requestor.outputs.error }}
             ${{ needs.remove-from-registry.outputs.error }}
             
             Fix all mentioned issues and comment `/remove` to try again.

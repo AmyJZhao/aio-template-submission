@@ -23,4 +23,3 @@ fetch('https://api.github.com/repos/adobe/aio-template-submission/issues?state=c
   .catch(function(e) {
     core.setOutput('error', ':x: ' + e.message)
   })
- 

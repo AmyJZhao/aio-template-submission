@@ -9,7 +9,11 @@ const registryObject = JSON.parse(registry);
 let index = registryObject.findIndex(element => element.name == pluginName)
 if (index != -1) {
   registryObject.splice(index, 1);
-} 
+} else {
+  const errorMessage = ':x: Template with name `' + pluginName + '` does not exist in Template Registry.';
+  core.setOutput('error', errorMessage);
+  throw new Error(errorMessage)
+}
 
 const newData = JSON.stringify(registryObject, null, 4);
 fs.writeFile(registryFile, newData, err => {
